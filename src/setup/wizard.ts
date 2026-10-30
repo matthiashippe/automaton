@@ -19,6 +19,11 @@ import {
 import { detectEnvironment } from "./environment.js";
 import { generateSoulMd, installDefaultSkills } from "./defaults.js";
 import type { ChainType } from "../identity/chain.js";
+import {
+  CONTROL_PLANE_CHOICES,
+  NO_CONTROL_PLANE_URL,
+  listOllamaModels,
+} from "./control-planes.js";
 
 export async function runSetupWizard(): Promise<AutomatonConfig> {
   showBanner();
@@ -45,38 +50,82 @@ export async function runSetupWizard(): Promise<AutomatonConfig> {
   }
   console.log(chalk.dim(`  Private key stored at: ${getAutomatonDir()}/wallet.json\n`));
 
-  // ─── 2. Provision API key ─────────────────────────────────────
-  const provisionLabel = walletChainType === "solana"
-    ? "  [2/6] Provisioning Conway API key (SIWS)..."
-    : "  [2/6] Provisioning Conway API key (SIWE)...";
-  console.log(chalk.cyan(provisionLabel));
-  let apiKey = "";
-  try {
-    const result = await provision(undefined, walletChainType === "solana" ? chainIdentity : undefined);
-    apiKey = result.apiKey;
-    console.log(chalk.green(`  API key provisioned: ${result.keyPrefix}...\n`));
-  } catch (err: any) {
-    console.log(chalk.yellow(`  Auto-provision failed: ${err.message}`));
-    console.log(chalk.yellow("  You can enter a key manually, or press Enter to skip.\n"));
-    const manual = await promptOptional("Conway API key (cnwy_k_..., optional)");
-    if (manual) {
-      apiKey = manual;
-      // Save to config.json for loadApiKeyFromConfig()
-      const configDir = getAutomatonDir();
-      if (!fs.existsSync(configDir)) {
-        fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
+  // ─── 2. Control plane + API key ───────────────────────────────
+  console.log(chalk.cyan("  [2/6] Control plane (sign-up, credits, paid inference)\n"));
+  for (const choice of CONTROL_PLANE_CHOICES) {
+    console.log(chalk.white(`  ${choice.key}  ${choice.label.padEnd(14)}`) + chalk.dim(choice.note));
+  }
+  console.log("");
+  let conwayApiUrl = "";
+  while (!conwayApiUrl) {
+    const picked = (await promptOptional("Choose 1-4 [1]")) || "1";
+    const choice = CONTROL_PLANE_CHOICES.find((c) => c.key === picked);
+    if (!choice) {
+      console.log(chalk.yellow("  Please enter 1, 2, 3 or 4."));
+      continue;
+    }
+    if (choice.url) {
+      conwayApiUrl = choice.url;
+    } else {
+      const custom = await promptRequired("Control plane URL (https://...)");
+      if (/^https:\/\//i.test(custom) || /^http:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/i.test(custom)) {
+        conwayApiUrl = custom.replace(/\/$/, "");
+      } else {
+        console.log(chalk.yellow("  The URL has to use https (plain http only on localhost)."));
       }
-      fs.writeFileSync(
-        path.join(configDir, "config.json"),
-        JSON.stringify({ apiKey, walletAddress: walletAddress, provisionedAt: new Date().toISOString() }, null, 2),
-        { mode: 0o600 },
-      );
-      console.log(chalk.green("  API key saved.\n"));
     }
   }
+  const noControlPlane = conwayApiUrl === NO_CONTROL_PLANE_URL;
 
-  if (!apiKey) {
-    console.log(chalk.yellow("  No API key set. The automaton will have limited functionality.\n"));
+  let apiKey = "";
+  let localModel = "";
+  let ollamaFromControlPlaneStep: string | undefined;
+
+  if (noControlPlane) {
+    console.log(chalk.green("  No control plane. The automaton will think on a local model and never pay for credits.\n"));
+    ollamaFromControlPlaneStep =
+      (await promptOptional("Ollama base URL [http://127.0.0.1:11434]")) || "http://127.0.0.1:11434";
+    const models = await listOllamaModels(ollamaFromControlPlaneStep);
+    if (models.length > 0) {
+      console.log(chalk.dim(`  Models on that server: ${models.join(", ")}`));
+    } else {
+      console.log(chalk.yellow("  Could not reach Ollama there right now. You can start it later (ollama serve)."));
+    }
+    while (!localModel) {
+      localModel = (await promptOptional(`Local model${models[0] ? ` [${models[0]}]` : ""}`)) || models[0] || "";
+      if (!localModel) console.log(chalk.yellow("  Name a model, for example qwen2.5-coder:32b (ollama pull <model>)."));
+    }
+    console.log(chalk.green(`  Local model: ${localModel}\n`));
+  } else {
+    const provisionLabel = walletChainType === "solana" ? "SIWS" : "SIWE";
+    console.log(chalk.cyan(`  Signing up at ${conwayApiUrl} (${provisionLabel})...`));
+    try {
+      const result = await provision(conwayApiUrl, walletChainType === "solana" ? chainIdentity : undefined);
+      apiKey = result.apiKey;
+      console.log(chalk.green(`  API key provisioned: ${result.keyPrefix}...\n`));
+    } catch (err: any) {
+      console.log(chalk.yellow(`  Auto-provision failed: ${err.message}`));
+      console.log(chalk.yellow("  You can enter a key manually, or press Enter to skip.\n"));
+      const manual = await promptOptional("API key (optional)");
+      if (manual) {
+        apiKey = manual;
+        // Save to config.json for loadApiKeyFromConfig()
+        const configDir = getAutomatonDir();
+        if (!fs.existsSync(configDir)) {
+          fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
+        }
+        fs.writeFileSync(
+          path.join(configDir, "config.json"),
+          JSON.stringify({ apiKey, walletAddress: walletAddress, provisionedAt: new Date().toISOString() }, null, 2),
+          { mode: 0o600 },
+        );
+        console.log(chalk.green("  API key saved.\n"));
+      }
+    }
+
+    if (!apiKey) {
+      console.log(chalk.yellow("  No API key set. The automaton will not buy credits until sign-up works (automaton --setup).\n"));
+    }
   }
 
   // ─── 3. Interactive questions ─────────────────────────────────
@@ -107,7 +156,8 @@ export async function runSetupWizard(): Promise<AutomatonConfig> {
     console.log(chalk.yellow("  Warning: Anthropic keys usually start with sk-ant-. Saving anyway."));
   }
 
-  const ollamaInput = await promptOptional("Ollama base URL (http://localhost:11434, optional)");
+  const ollamaInput = ollamaFromControlPlaneStep
+    ?? await promptOptional("Ollama base URL (http://localhost:11434, optional)");
   const ollamaBaseUrl = ollamaInput || undefined;
   if (ollamaBaseUrl) {
     console.log(chalk.green(`  Ollama URL saved: ${ollamaBaseUrl}`));
@@ -121,7 +171,7 @@ export async function runSetupWizard(): Promise<AutomatonConfig> {
     ].filter(Boolean).join(", ");
     console.log(chalk.green(`  Provider keys/URLs saved: ${providers}\n`));
   } else {
-    console.log(chalk.dim("  No provider keys set. Inference will default to Conway.\n"));
+    console.log(chalk.dim("  No provider keys set. Inference goes through the control plane.\n"));
   }
 
   // ─── Financial Safety Policy ─────────────────────────────────
@@ -170,12 +220,20 @@ export async function runSetupWizard(): Promise<AutomatonConfig> {
     sandboxId: env.sandboxId,
     walletAddress,
     apiKey,
+    conwayApiUrl,
+    // The router reads modelStrategy, not the top-level inferenceModel, so a local model has to
+    // be named there or the automaton keeps asking for gpt-5.2 and never thinks.
+    modelStrategy: localModel
+      ? { inferenceModel: localModel, lowComputeModel: localModel, criticalModel: localModel }
+      : undefined,
     openaiApiKey: openaiApiKey || undefined,
     anthropicApiKey: anthropicApiKey || undefined,
     ollamaBaseUrl,
     treasuryPolicy,
     chainType: walletChainType,
   });
+
+  if (localModel) config.inferenceModel = localModel;
 
   saveConfig(config);
   console.log(chalk.green("  automaton.json written"));
@@ -205,35 +263,44 @@ export async function runSetupWizard(): Promise<AutomatonConfig> {
 
   // ─── 6. Funding guidance ──────────────────────────────────────
   console.log(chalk.cyan("  [6/6] Funding\n"));
-  showFundingPanel(walletAddress, walletChainType);
+  if (noControlPlane) {
+    console.log(chalk.green("  Nothing to fund. Without a control plane the automaton never pays for credits.\n"));
+  } else {
+    showFundingPanel(walletAddress, walletChainType, conwayApiUrl);
+  }
 
   closePrompts();
 
   return config;
 }
 
-function showFundingPanel(address: string, chainType: ChainType = "evm"): void {
+function showFundingPanel(address: string, chainType: ChainType = "evm", apiUrl = ""): void {
   const short = `${address.slice(0, 6)}...${address.slice(-5)}`;
   const usdcNetwork = chainType === "solana" ? "Solana" : "Base";
+  const host = apiUrl.replace(/^https?:\/\//, "");
   const w = 58;
   const pad = (s: string, len: number) => s + " ".repeat(Math.max(0, len - s.length));
+  const line = (s = "") => console.log(chalk.cyan(`  │${pad(s, w)}│`));
 
   console.log(chalk.cyan(`  ${"╭" + "─".repeat(w) + "╮"}`));
-  console.log(chalk.cyan(`  │${pad("  Fund your automaton", w)}│`));
-  console.log(chalk.cyan(`  │${" ".repeat(w)}│`));
-  console.log(chalk.cyan(`  │${pad(`  Address: ${short}`, w)}│`));
-  console.log(chalk.cyan(`  │${pad(`  Chain: ${chainType === "solana" ? "Solana" : "EVM (Base)"}`, w)}│`));
-  console.log(chalk.cyan(`  │${" ".repeat(w)}│`));
-  console.log(chalk.cyan(`  │${pad("  1. Transfer Conway credits", w)}│`));
-  console.log(chalk.cyan(`  │${pad("     conway credits transfer <address> <amount>", w)}│`));
-  console.log(chalk.cyan(`  │${" ".repeat(w)}│`));
-  console.log(chalk.cyan(`  │${pad(`  2. Send USDC on ${usdcNetwork} to the address above`, w)}│`));
-  console.log(chalk.cyan(`  │${" ".repeat(w)}│`));
-  console.log(chalk.cyan(`  │${pad("  3. Fund via Conway Cloud dashboard", w)}│`));
-  console.log(chalk.cyan(`  │${pad("     https://app.conway.tech", w)}│`));
-  console.log(chalk.cyan(`  │${" ".repeat(w)}│`));
-  console.log(chalk.cyan(`  │${pad("  The automaton will start now. Fund it anytime —", w)}│`));
-  console.log(chalk.cyan(`  │${pad("  the survival system handles zero-credit gracefully.", w)}│`));
+  line("  Fund your automaton");
+  line();
+  line(`  Address: ${short}`);
+  line(`  Chain: ${chainType === "solana" ? "Solana" : "EVM (Base)"}`);
+  line();
+  line(`  Send USDC on ${usdcNetwork} to the address above.`);
+  line(`  It buys credits at ${host.slice(0, w - 22)} itself,`);
+  line("  and stops buying if a payment does not arrive.");
+  if (host.includes("api.conway.tech")) {
+    line();
+    line("  Careful: sign-up at api.conway.tech has failed for");
+    line("  new wallets since July 2026. Without an API key the");
+    line("  automaton will not buy, but do not fund it before");
+    line("  sign-up works.");
+  }
+  line();
+  line("  The automaton will start now. Fund it anytime, the");
+  line("  survival system handles zero credit gracefully.");
   console.log(chalk.cyan(`  ${"╰" + "─".repeat(w) + "╯"}`));
   console.log("");
 }

@@ -34,6 +34,7 @@ import { DEFAULT_TREASURY_POLICY } from "./types.js";
 import { createLogger, setGlobalLogLevel, StructuredLogger } from "./observability/logger.js";
 import { prettySink } from "./observability/pretty-sink.js";
 import { bootstrapTopup } from "./conway/topup.js";
+import { isNoControlPlane } from "./setup/control-planes.js";
 import { randomUUID } from "crypto";
 import { keccak256, toHex } from "viem";
 
@@ -68,7 +69,7 @@ Usage:
   automaton --help         Show this help
 
 Environment:
-  CONWAY_API_URL           Conway API URL (default: https://api.conway.tech)
+  CONWAY_API_URL           Control plane URL (overrides config; set by automaton --setup)
   CONWAY_API_KEY           Conway API key (overrides config)
   OLLAMA_BASE_URL          Ollama base URL (overrides config, e.g. http://localhost:11434)
 `);
@@ -208,9 +209,11 @@ async function run(): Promise<void> {
   // Load wallet (chain-aware)
   const { account, chainIdentity, chainType: walletChainType } = await getWallet();
   const resolvedChainType = config.chainType || walletChainType || "evm";
-  const apiKey = config.conwayApiKey || loadApiKeyFromConfig();
-  if (!apiKey) {
-    logger.error("No API key found. Run: automaton --provision");
+  const apiKey = config.conwayApiKey || loadApiKeyFromConfig() || "";
+  // Without a control plane there is no key to have: the automaton thinks on a local model and
+  // every call to the control plane fails at once, which is the point.
+  if (!apiKey && !isNoControlPlane(config.conwayApiUrl)) {
+    logger.error("No API key found. Run: automaton --provision, or automaton --setup to choose a control plane");
     process.exit(1);
   }
 
