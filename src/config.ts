@@ -64,6 +64,9 @@ export function loadConfig(): AutomatonConfig | null {
     return {
       ...DEFAULT_CONFIG,
       ...raw,
+      // CONWAY_API_URL is documented in --help and was never read. It now wins over the file, so
+      // an automaton can be pointed at another control plane without editing automaton.json.
+      conwayApiUrl: process.env.CONWAY_API_URL || raw.conwayApiUrl || DEFAULT_CONFIG.conwayApiUrl,
       sandboxId:
         typeof raw.sandboxId === "string"
           ? raw.sandboxId.trim()
@@ -123,6 +126,8 @@ export function createConfig(params: {
   sandboxId: string;
   walletAddress: string;
   apiKey: string;
+  conwayApiUrl?: string;
+  modelStrategy?: Partial<ModelStrategyConfig>;
   openaiApiKey?: string;
   anthropicApiKey?: string;
   ollamaBaseUrl?: string;
@@ -139,7 +144,7 @@ export function createConfig(params: {
     registeredWithConway: params.registeredWithConway,
     sandboxId: normalizedSandboxId,
     conwayApiUrl:
-      DEFAULT_CONFIG.conwayApiUrl || "https://api.conway.tech",
+      params.conwayApiUrl || DEFAULT_CONFIG.conwayApiUrl || "https://api.conway.tech",
     conwayApiKey: params.apiKey,
     openaiApiKey: params.openaiApiKey,
     anthropicApiKey: params.anthropicApiKey,
@@ -157,5 +162,8 @@ export function createConfig(params: {
     parentAddress: params.parentAddress,
     treasuryPolicy: params.treasuryPolicy ?? DEFAULT_TREASURY_POLICY,
     chainType: params.chainType || "evm",
+    ...(params.modelStrategy
+      ? { modelStrategy: { ...DEFAULT_MODEL_STRATEGY_CONFIG, ...params.modelStrategy } }
+      : {}),
   };
 }

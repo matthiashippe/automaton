@@ -618,7 +618,9 @@ export const DEFAULT_HTTP_CLIENT_CONFIG: HttpClientConfig = {
   backoffMax: 30_000,
   circuitBreakerThreshold: 5,
   circuitBreakerResetMs: 60_000,
-  allowHttpOnLoopback: false,
+  // Plain HTTP stays refused everywhere except loopback, and on loopback only when the control
+  // plane itself is configured to live there (a self-hosted one on the same machine).
+  allowHttpOnLoopback: /^http:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/i.test(process.env.CONWAY_API_URL || ""),
 };
 
 // ─── Database ────────────────────────────────────────────────────
