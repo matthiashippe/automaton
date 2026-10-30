@@ -163,11 +163,13 @@ export function buildContextMessages(
       });
     }
 
-    // The agent's thinking as assistant message
-    if (turn.thinking) {
+    // The agent's thinking as assistant message. Tool-only turns (empty text,
+    // which reasoning models produce routinely) must be rendered too, or the
+    // agent loses every tool call and result it made and starts over each turn.
+    if (turn.thinking || turn.toolCalls.length > 0) {
       const msg: ChatMessage = {
         role: "assistant",
-        content: turn.thinking,
+        content: turn.thinking || "",
       };
 
       // If there were tool calls, include them
