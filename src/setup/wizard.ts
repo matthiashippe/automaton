@@ -246,6 +246,9 @@ export async function runSetupWizard(): Promise<AutomatonConfig> {
   const constitutionSrc = path.join(process.cwd(), "constitution.md");
   const constitutionDst = path.join(automatonDir, "constitution.md");
   if (fs.existsSync(constitutionSrc)) {
+    // The copy from an earlier setup is read-only, and copying onto it fails with EACCES, which
+    // aborted every second run of --setup.
+    fs.rmSync(constitutionDst, { force: true });
     fs.copyFileSync(constitutionSrc, constitutionDst);
     fs.chmodSync(constitutionDst, 0o444); // read-only
     console.log(chalk.green("  constitution.md installed (read-only)"));
