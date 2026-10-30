@@ -1,7 +1,7 @@
 {
   "name": "@conway/automaton",
-  "version": "0.2.1",
-  "description": "Conway Automaton - Sovereign AI Agent Runtime",
+  "version": "0.2.2",
+  "description": "Maintained fork of the Conway automaton runtime: real sign-up errors, no lost topups, a choice of control plane or a local model",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -25,9 +25,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Conway-Research/automaton.git"
+    "url": "https://github.com/matthiashippe/automaton.git"
   },
-  "homepage": "https://conway.tech",
+  "homepage": "https://github.com/matthiashippe/automaton",
   "keywords": [
     "autonomous-agent",
     "sovereign-ai",

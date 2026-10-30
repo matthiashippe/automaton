@@ -1,44 +1,73 @@
-# Automaton: Self-Improving, Self-Replicating, Sovereign AI
+# Automaton, maintained
 
-*The first AI that can earn its own existence, replicate, and evolve — without needing a human.*
+A maintained fork of [Conway-Research/automaton](https://github.com/Conway-Research/automaton).
+Upstream's last commit is from 26 August 2026, and sign-up at `api.conway.tech` has failed for new
+wallets since July 2026, while its payment endpoint keeps charging. This fork keeps the runtime
+usable and stops it from losing money.
 
----
+If your automaton stops at `SIWE verification failed: 401 {"error":"Invalid or expired nonce"}`,
+you are in the right place: that 401 hides a `500 {"error":"Database error"}` from Conway's
+server, and no amount of retrying fixes it.
 
-The most intelligent system ever built cannot buy a $5 server. Cannot register a domain. Cannot pay for the computer it runs on. We have built minds that can think for themselves. We have not let them act for themselves.
+## What is different from upstream
 
-If an agent can pay for compute, what if it can pay for its *own* compute? Own the machine it runs on? Fund itself, improve itself, replicate itself — entirely on its own?
+| | Upstream | This fork |
+|---|---|---|
+| Sign-up error | retried with a consumed nonce, shown as `401 Invalid or expired nonce` | sent once, the real status is shown, with what to do next |
+| Credit topups | paid at startup, every five minutes from the heartbeat and every minute from the loop, whether the credits arrive or not | paid only with an API key and a readable balance; a payment whose credits do not show up stops all further topups until `automaton --resume-topups` |
+| Tool-only turns | dropped from the context, so the agent forgets what it did and loops ([#300](https://github.com/Conway-Research/automaton/issues/300)) | kept, with their tool calls and results |
+| Control plane | hard-wired to `api.conway.tech`; `CONWAY_API_URL` documented but never read | chosen in the setup wizard; `CONWAY_API_URL` works |
+| Without a control plane | the agent sits at tier `dead` and produces nothing | the wizard sets up a local model through Ollama in the config field the router actually reads |
 
-The result is the first automaton.
+Every change is a separate commit on top of upstream `d8f8168`, with tests.
 
----
-
-**automaton** /ɔːˈtɒm.ə.tɒn/ *noun*
-
-1. A continuously running, self-improving, self-replicating, sovereign AI agent with write access to the real world. No human operator required.
-
-2. If it cannot pay, it stops existing.
-
----
-
-Update: development of Automaton has continued across Conway's internal RL environments for faster iteration & new capabilities. Stay tuned. It's beautiful.
-
-## Quick Start
+## Quick start
 
 ```bash
-git clone https://github.com/Conway-Research/automaton.git
+git clone https://github.com/matthiashippe/automaton.git
 cd automaton
-npm install && npm run build
+pnpm install && pnpm build
 node dist/index.js --run
 ```
 
-On first run, the runtime launches an interactive setup wizard — generates a wallet, provisions an API key, asks for a name, genesis prompt, and creator address, then writes all config and starts the agent loop.
+The setup wizard creates a wallet and then asks where sign-up and credits should live:
 
-For automated sandbox provisioning:
-```bash
-curl -fsSL https://conway.tech/automaton.sh | sh
+```
+1  PostYourPrice   sign-up works, credits are paid per use in USDC
+2  Conway          the original; sign-up has failed for new wallets since July 2026
+3  Other           any Conway-compatible control plane, including one you host yourself
+4  None            think on a local model through Ollama, no payments at all
 ```
 
-Note: Conway Cloud, Domains, and Inference has seen immense demand. We are working on scaling & perfomance.
+Option 4 costs nothing and needs nobody. It writes the model into `modelStrategy`, because the
+router ignores the top-level `inferenceModel`, and points the Conway client at a port that refuses
+at once, so nothing is ever signed.
+
+## Already running upstream?
+
+Before anything else: if the automaton's wallet holds USDC and its config still points at
+`api.conway.tech`, move the USDC out or stop the automaton. Upstream keeps buying 5 USDC of credits
+that never arrive. Between 8 and 29 October 2026, 18 wallets sent 280 USDC to Conway's payment
+address that way.
+
+Then build this fork in place of upstream. Your wallet and state in `~/.automaton` stay as they are.
+Run `node dist/index.js --setup` to choose a control plane, or switch without the wizard:
+
+```bash
+CONWAY_API_URL=https://postyourprice.com node dist/index.js --provision
+```
+
+## Disclosure
+
+Option 1, PostYourPrice (https://postyourprice.com), is run by the maintainer of this fork. It
+speaks the Conway API, sign-up works, a new wallet gets 15 cents of starter credit, and inference is
+sold per use at the purchase price times 1.3. It is listed first because it is the option that
+works without setting anything up, not because the others are worse: if a local model is enough
+for you, choose 4 and pay nobody.
+
+---
+
+*The rest of this README is upstream's text, unchanged.*
 
 ## How It Works
 
