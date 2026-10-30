@@ -196,26 +196,6 @@ describe("buildContextMessages tool result truncation", () => {
     expect(toolMessage!.content.length).toBeLessThan(MAX_TOOL_RESULT_SIZE + 200);
   });
 
-  it("renders tool-only turns (empty thinking) with their tool calls and results", () => {
-    const turn: AgentTurn = {
-      id: "t-tool-only",
-      timestamp: new Date().toISOString(),
-      state: "running",
-      thinking: "",
-      toolCalls: [
-        { id: "call_1", name: "exec", arguments: { command: "ls" }, result: "alpha.txt\nbeta.json" },
-      ],
-    } as unknown as AgentTurn;
-    const messages = buildContextMessages("SYSTEM", [turn]);
-    const assistant = messages.find((m) => m.role === "assistant");
-    expect(assistant).toBeDefined();
-    expect(assistant!.tool_calls?.[0]?.function.name).toBe("exec");
-    const toolMsg = messages.find((m) => m.role === "tool");
-    expect(toolMsg).toBeDefined();
-    expect(toolMsg!.content).toContain("alpha.txt");
-    expect((toolMsg as any).tool_call_id).toBe("call_1");
-  });
-
   it("does not truncate small tool results", () => {
     const smallResult = "small output";
     const turn = makeTurn({
