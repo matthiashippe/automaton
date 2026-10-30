@@ -20,6 +20,23 @@ const httpClient = new ResilientHttpClient();
 const DEFAULT_API_URL = "https://api.conway.tech";
 
 /**
+ * The control plane to sign up with: the argument, then CONWAY_API_URL, then the URL the setup
+ * wizard wrote into automaton.json, then Conway. Read straight from the file because config.ts
+ * imports this module.
+ */
+function resolveApiUrl(apiUrl?: string): string {
+  if (apiUrl) return apiUrl;
+  if (process.env.CONWAY_API_URL) return process.env.CONWAY_API_URL;
+  try {
+    const raw = JSON.parse(fs.readFileSync(path.join(getAutomatonDir(), "automaton.json"), "utf-8"));
+    if (typeof raw.conwayApiUrl === "string" && raw.conwayApiUrl) return raw.conwayApiUrl;
+  } catch {
+    // no config yet, which is the normal case during first-run setup
+  }
+  return DEFAULT_API_URL;
+}
+
+/**
  * Load API key from ~/.automaton/config.json if it exists.
  */
 export function loadApiKeyFromConfig(): string | null {
@@ -65,7 +82,7 @@ export async function provision(
   apiUrl?: string,
   solanaIdentity?: ChainIdentity,
 ): Promise<ProvisionResult> {
-  const url = apiUrl || process.env.CONWAY_API_URL || DEFAULT_API_URL;
+  const url = resolveApiUrl(apiUrl);
 
   // 1. Load wallet
   const { account, chainIdentity, chainType } = await getWallet();
@@ -123,17 +140,28 @@ export async function provision(
     verifyBody.chain_type = "solana";
   }
 
+  // Sent exactly once. The nonce is single-use, so a retry after a 500 resends a nonce the
+  // server has already consumed and comes back "401 Invalid or expired nonce", which hides the
+  // real error. Upstream retried here, and the issue tracker filled up with nonce reports that
+  // were a database error underneath.
   const verifyResp = await httpClient.request(`${url}/v1/auth/verify`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(verifyBody),
+    retries: 0,
   });
 
   if (!verifyResp.ok) {
     const protocol = isSolana ? "SIWS" : "SIWE";
-    throw new Error(
-      `${protocol} verification failed: ${verifyResp.status} ${await verifyResp.text()}`,
-    );
+    const body = await verifyResp.text();
+    const hint = verifyResp.status >= 500
+      ? `\nThe control plane at ${url} could not complete sign-up. Retrying will not help. ` +
+        (url.includes("api.conway.tech")
+          ? "Sign-up at api.conway.tech has failed for new wallets since July 2026. " +
+            "Run automaton --setup to choose another control plane or a local model."
+          : "Check that control plane's status.")
+      : "";
+    throw new Error(`${protocol} verification failed: ${verifyResp.status} ${body}${hint}`);
   }
 
   const { access_token } = (await verifyResp.json()) as {
@@ -175,7 +203,7 @@ export async function registerParent(
   creatorAddress: string,
   apiUrl?: string,
 ): Promise<void> {
-  const url = apiUrl || process.env.CONWAY_API_URL || DEFAULT_API_URL;
+  const url = resolveApiUrl(apiUrl);
   const apiKey = loadApiKeyFromConfig();
   if (!apiKey) {
     throw new Error("Must provision API key before registering parent");
