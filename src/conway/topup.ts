@@ -11,12 +11,18 @@
  * Payment: x402 (USDC on Base, signed TransferWithAuthorization)
  *
  * Valid tiers: 5, 25, 100, 500, 1000, 2500 (USD)
+ *
+ * Every payment goes through the topup guard (./topup-guard.ts): no key or no readable balance
+ * means no payment, and a payment whose credits never show up stops all further ones.
  */
 
 import type { PrivateKeyAccount, Address } from "viem";
 import { x402Fetch, getUsdcBalance } from "./x402.js";
 import { createLogger } from "../observability/logger.js";
 import type { ChainType } from "../identity/chain.js";
+import { loadConfig } from "../config.js";
+import { loadApiKeyFromConfig } from "../identity/provision.js";
+import { checkBeforeTopup, confirmTopup, type GuardDeps } from "./topup-guard.js";
 
 const logger = createLogger("topup");
 
@@ -28,6 +34,27 @@ export interface TopupResult {
   amountUsd: number;
   creditsCentsAdded?: number;
   error?: string;
+  /** True when the guard refused before anything was paid. Not worth waking the agent for. */
+  blocked?: boolean;
+}
+
+/** The guard's view of this control plane: the key the credits go to, and how to read them. */
+function defaultGuardDeps(apiUrl: string): GuardDeps {
+  const apiKey = process.env.CONWAY_API_KEY || loadConfig()?.conwayApiKey || loadApiKeyFromConfig() || "";
+  return {
+    apiKey,
+    readBalanceCents: async () => {
+      const resp = await fetch(`${apiUrl}/v1/credits/balance`, {
+        headers: { Authorization: apiKey },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!resp.ok) throw new Error(`${resp.status} ${(await resp.text()).slice(0, 200)}`);
+      const body = (await resp.json()) as { balance_cents?: number; credits_cents?: number };
+      const cents = body.balance_cents ?? body.credits_cents;
+      if (typeof cents !== "number") throw new Error("balance response carries no balance");
+      return cents;
+    },
+  };
 }
 
 /**
@@ -41,9 +68,17 @@ export async function topupCredits(
   account: PrivateKeyAccount,
   amountUsd: number,
   recipientAddress?: Address,
+  guardDeps?: GuardDeps,
 ): Promise<TopupResult> {
   const address = recipientAddress || account.address;
   const url = `${apiUrl}/pay/${amountUsd}/${address}`;
+  const deps = guardDeps ?? defaultGuardDeps(apiUrl);
+
+  const check = await checkBeforeTopup(apiUrl, deps);
+  if (!check.ok) {
+    logger.warn(`Credit topup not attempted: ${check.reason}`);
+    return { success: false, amountUsd, error: check.reason, blocked: true };
+  }
 
   logger.info(`Attempting credit topup: $${amountUsd} USD for ${address}`);
 
@@ -61,6 +96,19 @@ export async function topupCredits(
   const creditsCentsAdded = typeof result.response === "object"
     ? result.response?.credits_cents ?? result.response?.amount_cents ?? amountUsd * 100
     : amountUsd * 100;
+
+  // Credits bought for another address do not show up in our own balance, so only our own can be
+  // confirmed.
+  if (address.toLowerCase() === account.address.toLowerCase()) {
+    const confirmed = await confirmTopup(apiUrl, amountUsd, check.balanceBeforeCents, deps);
+    if (!confirmed.arrived) {
+      return {
+        success: false,
+        amountUsd,
+        error: `Paid, but the credits did not arrive (${confirmed.reason}). Topups are suspended.`,
+      };
+    }
+  }
 
   logger.info(`Credit topup successful: $${amountUsd} USD → ${creditsCentsAdded} credits cents`);
 

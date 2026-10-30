@@ -63,6 +63,7 @@ Usage:
   automaton --init         Initialize wallet and config directory
   automaton --provision    Provision Conway API key via SIWE
   automaton --status       Show current automaton status
+  automaton --resume-topups  Allow credit topups again after a lost payment stopped them
   automaton --version      Show version
   automaton --help         Show this help
 
@@ -103,6 +104,17 @@ Environment:
       logger.error(`Provision failed: ${err.message}`);
       process.exit(1);
     }
+    process.exit(0);
+  }
+
+  if (args.includes("--resume-topups")) {
+    const { resumeTopups } = await import("./conway/topup-guard.js");
+    const lifted = resumeTopups();
+    logger.info(
+      lifted
+        ? `Topups allowed again. They had been suspended since ${lifted.since}: ${lifted.reason}`
+        : "Topups were not suspended.",
+    );
     process.exit(0);
   }
 

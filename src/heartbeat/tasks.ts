@@ -186,6 +186,12 @@ export const BUILTIN_TASKS: Record<string, HeartbeatTaskFn> = {
         };
       }
 
+      // The guard refused before paying (no key, no readable balance, or suspended). Waking the
+      // agent every five minutes to tell it so would only spend what is left.
+      if (result?.blocked) {
+        return { shouldWake: false };
+      }
+
       // Topup failed — wake the agent so it can handle it manually
       const errMsg = result?.error ?? "unknown error";
       logger.warn(`Auto-topup failed: ${errMsg}`);
