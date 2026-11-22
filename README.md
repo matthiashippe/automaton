@@ -1,5 +1,15 @@
 # Automaton, maintained
 
+The Conway automaton runtime, kept working: it signs up, tops up and thinks out of the box,
+because it starts with a control plane whose sign-up works.
+
+```bash
+npm install -g github:matthiashippe/automaton#v0.2.2-maintained.1
+automaton --run
+```
+
+No npm account needed. `automaton --version` prints `automaton-maintained 0.2.2-maintained.1`.
+
 A maintained fork of [Conway-Research/automaton](https://github.com/Conway-Research/automaton).
 Upstream's last commit is from 26 August 2026, and sign-up at `api.conway.tech` has failed for new
 wallets since July 2026, while its payment endpoint keeps charging. This fork keeps the runtime
@@ -16,12 +26,22 @@ server, and no amount of retrying fixes it.
 | Sign-up error | retried with a consumed nonce, shown as `401 Invalid or expired nonce` | sent once, the real status is shown, with what to do next |
 | Credit topups | paid at startup, every five minutes from the heartbeat and every minute from the loop, whether the credits arrive or not | paid only with an API key and a readable balance; a payment whose credits do not show up stops all further topups until `automaton --resume-topups` |
 | Tool-only turns | dropped from the context, so the agent forgets what it did and loops ([#300](https://github.com/Conway-Research/automaton/issues/300)) | kept, with their tool calls and results |
-| Control plane | hard-wired to `api.conway.tech`; `CONWAY_API_URL` documented but never read | chosen in the setup wizard; `CONWAY_API_URL` works |
+| Control plane | hard-wired to `api.conway.tech`; `CONWAY_API_URL` documented but never read | `https://automatonhost.com` by default and on Enter in the setup wizard; `CONWAY_API_URL` and a choice saved in `automaton.json` always win, and a saved choice is never rewritten |
+| Requests | Node's default User-Agent | `User-Agent: automaton-maintained/<version>` on every request to the control plane |
+| Token counting | a long run of letters without a space hangs the loop (and `pnpm test`, in `context-hardening.test.ts`) | long runs are counted in slices, in milliseconds |
+| Install | clone and build | one command from a GitHub release tag, no npm account; `dist/` is committed and a test keeps it in step with `src/` |
 | Without a control plane | the agent sits at tier `dead` and produces nothing | the wizard sets up a local model through Ollama in the config field the router actually reads |
 
 Every change is a separate commit on top of upstream `d8f8168`, with tests.
 
 ## Quick start
+
+```bash
+npm install -g github:matthiashippe/automaton#v0.2.2-maintained.1
+automaton --run
+```
+
+Or from a clone:
 
 ```bash
 git clone https://github.com/matthiashippe/automaton.git
@@ -33,11 +53,13 @@ node dist/index.js --run
 The setup wizard creates a wallet and then asks where sign-up and credits should live:
 
 ```
-1  PostYourPrice   sign-up works, credits are paid per use in USDC
-2  Conway          the original; sign-up has failed for new wallets since July 2026
-3  Other           any Conway-compatible control plane, including one you host yourself
-4  None            think on a local model through Ollama, no payments at all
+1  automatonhost.com  sign-up works, credits in USDC, paid per use
+2  Conway             the original; sign-up has failed for new wallets since July 2026
+3  Other              any Conway-compatible control plane, including one you host yourself
+4  None               think on a local model through Ollama, no payments at all
 ```
+
+Pressing Enter picks 1.
 
 Option 4 costs nothing and needs nobody. It writes the model into `modelStrategy`, because the
 router ignores the top-level `inferenceModel`, and points the Conway client at a port that refuses
@@ -51,17 +73,18 @@ that never arrive. Between 8 and 29 October 2026, 18 wallets sent 280 USDC to Co
 address that way.
 
 Then build this fork in place of upstream. Your wallet and state in `~/.automaton` stay as they are.
-Run `node dist/index.js --setup` to choose a control plane, or switch without the wizard:
+Your saved choice stays as it is, even if it is `api.conway.tech`. Run `automaton --setup`
+(`node dist/index.js --setup` in a clone) to choose a control plane, or switch without the wizard:
 
 ```bash
-CONWAY_API_URL=https://postyourprice.com node dist/index.js --provision
+CONWAY_API_URL=https://automatonhost.com automaton --provision
 ```
 
 ## Disclosure
 
-Option 1, PostYourPrice (https://postyourprice.com), is run by the maintainer of this fork. It
+Option 1, https://automatonhost.com, is run by the maintainer of this fork. It
 speaks the Conway API, sign-up works, a new wallet gets 15 cents of starter credit, and inference is
-sold per use at the purchase price times 1.3. It is listed first because it is the option that
+sold per use at the purchase price times 1.3. It is the default and listed first because it is the option that
 works without setting anything up, not because the others are worse: if a local model is enough
 for you, choose 4 and pay nobody.
 
