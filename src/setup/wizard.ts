@@ -55,7 +55,7 @@ export async function runSetupWizard(): Promise<AutomatonConfig> {
   // ─── 2. Control plane + API key ───────────────────────────────
   console.log(chalk.cyan("  [2/6] Control plane (sign-up, credits, paid inference)\n"));
   for (const choice of CONTROL_PLANE_CHOICES) {
-    console.log(chalk.white(`  ${choice.key}  ${choice.label.padEnd(14)}`) + chalk.dim(choice.note));
+    console.log(chalk.white(`  ${choice.key}  ${choice.label.padEnd(19)}`) + chalk.dim(choice.note));
   }
   console.log("");
   let conwayApiUrl = "";

@@ -60,6 +60,9 @@ importers:
       '@types/node':
         specifier: ^20.10.0
         version: 20.19.33
+      automaton-build:
+        specifier: workspace:*
+        version: link:packages/build
       tsx:
         specifier: ^4.7.0
         version: 4.21.0
@@ -69,6 +72,8 @@ importers:
       vitest:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@20.19.33)
+
+  packages/build: {}
 
   packages/cli:
     dependencies:
