@@ -11,14 +11,14 @@ describe("control plane choices", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("offers a working control plane first and says plainly that Conway's sign-up fails", () => {
-    expect(CONTROL_PLANE_CHOICES[0].url).toBe("https://postyourprice.com");
+    expect(CONTROL_PLANE_CHOICES[0].url).toBe("https://automatonhost.com");
     const conway = CONTROL_PLANE_CHOICES.find((c) => c.url === "https://api.conway.tech");
     expect(conway?.note).toMatch(/failed/);
   });
 
   it("points an automaton without a control plane at a port that refuses at once", () => {
     expect(isNoControlPlane(NO_CONTROL_PLANE_URL)).toBe(true);
-    expect(isNoControlPlane("https://postyourprice.com")).toBe(false);
+    expect(isNoControlPlane("https://automatonhost.com")).toBe(false);
     expect(NO_CONTROL_PLANE_URL.startsWith("https://127.0.0.1:")).toBe(true);
   });
 

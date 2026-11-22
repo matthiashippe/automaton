@@ -66,6 +66,7 @@ export function loadConfig(): AutomatonConfig | null {
       ...raw,
       // CONWAY_API_URL is documented in --help and was never read. It now wins over the file, so
       // an automaton can be pointed at another control plane without editing automaton.json.
+      // A choice saved in the file is never rewritten; only a file without one gets the default.
       conwayApiUrl: process.env.CONWAY_API_URL || raw.conwayApiUrl || DEFAULT_CONFIG.conwayApiUrl,
       sandboxId:
         typeof raw.sandboxId === "string"
@@ -143,8 +144,7 @@ export function createConfig(params: {
     creatorAddress: params.creatorAddress,
     registeredWithConway: params.registeredWithConway,
     sandboxId: normalizedSandboxId,
-    conwayApiUrl:
-      params.conwayApiUrl || DEFAULT_CONFIG.conwayApiUrl || "https://api.conway.tech",
+    conwayApiUrl: params.conwayApiUrl || DEFAULT_CONFIG.conwayApiUrl || "https://automatonhost.com",
     conwayApiKey: params.apiKey,
     openaiApiKey: params.openaiApiKey,
     anthropicApiKey: params.anthropicApiKey,

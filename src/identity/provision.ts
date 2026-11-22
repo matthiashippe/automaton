@@ -17,11 +17,11 @@ import { buildSiwsMessage, signSiwsMessage } from "./siws.js";
 
 const httpClient = new ResilientHttpClient();
 
-const DEFAULT_API_URL = "https://api.conway.tech";
+const DEFAULT_API_URL = "https://automatonhost.com";
 
 /**
  * The control plane to sign up with: the argument, then CONWAY_API_URL, then the URL the setup
- * wizard wrote into automaton.json, then Conway. Read straight from the file because config.ts
+ * wizard wrote into automaton.json, then the default control plane. Read straight from the file because config.ts
  * imports this module.
  */
 function resolveApiUrl(apiUrl?: string): string {
@@ -158,7 +158,8 @@ export async function provision(
       ? `\nThe control plane at ${url} could not complete sign-up. Retrying will not help. ` +
         (url.includes("api.conway.tech")
           ? "Sign-up at api.conway.tech has failed for new wallets since July 2026. " +
-            "Run automaton --setup to choose another control plane or a local model."
+            "Run automaton --setup (node dist/index.js --setup in a clone) and choose " +
+            "https://automatonhost.com, another control plane or a local model."
           : "Check that control plane's status.")
       : "";
     throw new Error(`${protocol} verification failed: ${verifyResp.status} ${body}${hint}`);
