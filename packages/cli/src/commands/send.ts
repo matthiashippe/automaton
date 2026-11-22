@@ -7,7 +7,7 @@
  * using the same canonical format as the runtime client.
  */
 
-import { loadConfig } from "@conway/automaton/config.js";
+import { loadConfig } from "automaton-maintained/config.js";
 import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import { keccak256, toBytes } from "viem";
 import fs from "fs";

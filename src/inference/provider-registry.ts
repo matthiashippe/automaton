@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import OpenAI from "openai";
+import { USER_AGENT } from "../version.js";
 
 export type ModelTier = "reasoning" | "fast" | "cheap";
 
@@ -434,6 +435,9 @@ export class ProviderRegistry {
     const client = new OpenAI({
       apiKey,
       baseURL: provider.baseUrl,
+      // Inference through the control plane goes this way too (the openai provider pointed at
+      // conwayApiUrl/v1), so it carries the same User-Agent as the Conway client.
+      defaultHeaders: { "User-Agent": USER_AGENT },
     });
 
     return {
