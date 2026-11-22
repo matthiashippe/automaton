@@ -1,6 +1,6 @@
 {
-  "name": "@conway/automaton",
-  "version": "0.2.2",
+  "name": "automaton-maintained",
+  "version": "0.2.2-maintained.1",
   "description": "Maintained fork of the Conway automaton runtime: real sign-up errors, no lost topups, a choice of control plane or a local model",
   "type": "module",
   "main": "dist/index.js",
@@ -23,6 +23,10 @@
     "automaton": "dist/index.js",
     "conway-automaton": "dist/index.js"
   },
+  "files": [
+    "dist",
+    "constitution.md"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/matthiashippe/automaton.git"
@@ -38,7 +42,6 @@
   "license": "MIT",
   "packageManager": "pnpm@10.28.1",
   "scripts": {
-    "build": "tsc && pnpm -r build",
     "dev": "tsx watch src/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -68,6 +71,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "automaton-build": "workspace:*",
     "tsx": "^4.7.0",
     "typescript": "^5.9.3",
     "vitest": "^2.0.0"

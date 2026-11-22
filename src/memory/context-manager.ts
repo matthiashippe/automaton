@@ -128,6 +128,35 @@ function formatCacheKey(text: string, model?: string): string {
   return `${model ?? "default"}::${text}`;
 }
 
+/** Longest run without whitespace that is handed to the encoder in one piece. */
+const MAX_ENCODED_RUN = 256;
+/** Slice length for longer runs; small enough that a slice encodes in well under a millisecond. */
+const RUN_SLICE = 32;
+
+/**
+ * Token count of a text, with long whitespace-free runs encoded in slices.
+ *
+ * js-tiktoken merges each pre-tokenized piece in quadratic time, and a run of letters without a
+ * space is a single piece: 32,000 of them took a minute, 500,000 never finished. Slicing such a
+ * run only splits merges at the cuts, so the count can only go up, never under-budget the context.
+ */
+function encodedLength(encoder: Tiktoken, text: string): number {
+  const longRun = new RegExp(`\\S{${MAX_ENCODED_RUN + 1},}`, "g");
+  let count = 0;
+  let last = 0;
+  for (const match of text.matchAll(longRun)) {
+    const start = match.index ?? 0;
+    if (start > last) count += encoder.encode(text.slice(last, start)).length;
+    const run = match[0];
+    for (let i = 0; i < run.length; i += RUN_SLICE) {
+      count += encoder.encode(run.slice(i, i + RUN_SLICE)).length;
+    }
+    last = start + run.length;
+  }
+  if (last < text.length) count += encoder.encode(text.slice(last)).length;
+  return count;
+}
+
 export function createTokenCounter(): TokenCounter {
   const cache = new Map<string, number>();
   let encoder: Tiktoken | null = null;
@@ -152,7 +181,7 @@ export function createTokenCounter(): TokenCounter {
     let count: number;
     if (encoder) {
       try {
-        count = encoder.encode(normalizedText).length;
+        count = encodedLength(encoder, normalizedText);
       } catch {
         count = Math.ceil(normalizedText.length / 3.5);
       }

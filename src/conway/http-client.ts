@@ -9,6 +9,7 @@
 
 import type { HttpClientConfig } from "../types.js";
 import { DEFAULT_HTTP_CLIENT_CONFIG } from "../types.js";
+import { USER_AGENT } from "../version.js";
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 
@@ -88,6 +89,8 @@ export class ResilientHttpClient {
             ...(opts.idempotencyKey
               ? { "Idempotency-Key": opts.idempotencyKey }
               : {}),
+            // Lets the control plane tell the maintained package from upstream's runtime.
+            "User-Agent": USER_AGENT,
           },
         });
         clearTimeout(timer);

@@ -21,8 +21,10 @@ import { generateSoulMd, installDefaultSkills } from "./defaults.js";
 import type { ChainType } from "../identity/chain.js";
 import {
   CONTROL_PLANE_CHOICES,
+  DEFAULT_CONTROL_PLANE_KEY,
   NO_CONTROL_PLANE_URL,
   listOllamaModels,
+  resolveControlPlaneChoice,
 } from "./control-planes.js";
 
 export async function runSetupWizard(): Promise<AutomatonConfig> {
@@ -53,13 +55,14 @@ export async function runSetupWizard(): Promise<AutomatonConfig> {
   // ─── 2. Control plane + API key ───────────────────────────────
   console.log(chalk.cyan("  [2/6] Control plane (sign-up, credits, paid inference)\n"));
   for (const choice of CONTROL_PLANE_CHOICES) {
-    console.log(chalk.white(`  ${choice.key}  ${choice.label.padEnd(14)}`) + chalk.dim(choice.note));
+    console.log(chalk.white(`  ${choice.key}  ${choice.label.padEnd(19)}`) + chalk.dim(choice.note));
   }
   console.log("");
   let conwayApiUrl = "";
   while (!conwayApiUrl) {
-    const picked = (await promptOptional("Choose 1-4 [1]")) || "1";
-    const choice = CONTROL_PLANE_CHOICES.find((c) => c.key === picked);
+    const choice = resolveControlPlaneChoice(
+      await promptOptional(`Choose 1-4 [${DEFAULT_CONTROL_PLANE_KEY}]`),
+    );
     if (!choice) {
       console.log(chalk.yellow("  Please enter 1, 2, 3 or 4."));
       continue;

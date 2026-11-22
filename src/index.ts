@@ -38,8 +38,9 @@ import { isNoControlPlane } from "./setup/control-planes.js";
 import { randomUUID } from "crypto";
 import { keccak256, toHex } from "viem";
 
+import { VERSION } from "./version.js";
+
 const logger = createLogger("main");
-const VERSION = "0.2.2";
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -47,7 +48,7 @@ async function main(): Promise<void> {
   // ─── CLI Commands ────────────────────────────────────────────
 
   if (args.includes("--version") || args.includes("-v")) {
-    logger.info(`Conway Automaton v${VERSION}`);
+    process.stdout.write(`automaton-maintained ${VERSION}\n`);
     process.exit(0);
   }
 

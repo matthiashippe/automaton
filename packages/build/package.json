@@ -1,0 +1,10 @@
+{
+  "name": "automaton-build",
+  "version": "0.0.0",
+  "private": true,
+  "description": "pnpm build for the runtime: compiles src/ into dist/ and builds the workspace packages",
+  "type": "module",
+  "bin": {
+    "build": "build.mjs"
+  }
+}

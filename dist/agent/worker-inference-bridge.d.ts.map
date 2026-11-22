@@ -1,0 +1,1 @@
+{"version":3,"file":"worker-inference-bridge.d.ts","sourceRoot":"","sources":["../../src/agent/worker-inference-bridge.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,sBAAsB,EAAE,MAAM,kCAAkC,CAAC;AAG/E,OAAO,KAAK,EAAE,qBAAqB,EAAE,MAAM,oBAAoB,CAAC;AAEhE,wBAAgB,2BAA2B,CACzC,SAAS,EAAE,IAAI,CAAC,sBAAsB,EAAE,MAAM,CAAC,GAC9C,qBAAqB,CAmBvB"}

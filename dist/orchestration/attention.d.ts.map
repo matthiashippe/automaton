@@ -1,0 +1,1 @@
+{"version":3,"file":"attention.d.ts","sourceRoot":"","sources":["../../src/orchestration/attention.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,QAAQ,MAAM,gBAAgB,CAAC;AAC3C,OAAO,KAAK,EAAE,WAAW,EAAE,MAAM,aAAa,CAAC;AA6C/C,wBAAgB,cAAc,CAAC,EAAE,EAAE,QAAQ,CAAC,QAAQ,GAAG,MAAM,CAsB5D;AAED,wBAAgB,iBAAiB,CAAC,QAAQ,EAAE,WAAW,EAAE,EAAE,MAAM,EAAE,MAAM,GAAG,WAAW,EAAE,CAWxF"}

@@ -23,6 +23,7 @@ import type { ChainType } from "../identity/chain.js";
 import { loadConfig } from "../config.js";
 import { loadApiKeyFromConfig } from "../identity/provision.js";
 import { checkBeforeTopup, confirmTopup, type GuardDeps } from "./topup-guard.js";
+import { USER_AGENT } from "../version.js";
 
 const logger = createLogger("topup");
 
@@ -39,13 +40,13 @@ export interface TopupResult {
 }
 
 /** The guard's view of this control plane: the key the credits go to, and how to read them. */
-function defaultGuardDeps(apiUrl: string): GuardDeps {
+export function defaultGuardDeps(apiUrl: string): GuardDeps {
   const apiKey = process.env.CONWAY_API_KEY || loadConfig()?.conwayApiKey || loadApiKeyFromConfig() || "";
   return {
     apiKey,
     readBalanceCents: async () => {
       const resp = await fetch(`${apiUrl}/v1/credits/balance`, {
-        headers: { Authorization: apiKey },
+        headers: { Authorization: apiKey, "User-Agent": USER_AGENT },
         signal: AbortSignal.timeout(10_000),
       });
       if (!resp.ok) throw new Error(`${resp.status} ${(await resp.text()).slice(0, 200)}`);

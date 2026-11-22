@@ -28,9 +28,9 @@ export interface ControlPlaneChoice {
 export const CONTROL_PLANE_CHOICES: ControlPlaneChoice[] = [
   {
     key: "1",
-    label: "PostYourPrice",
-    url: "https://postyourprice.com",
-    note: "sign-up works, credits are paid per use in USDC (run by this fork's maintainer)",
+    label: "automatonhost.com",
+    url: "https://automatonhost.com",
+    note: "sign-up works, credits in USDC, paid per use (run by this fork's maintainer)",
   },
   {
     key: "2",
@@ -51,6 +51,15 @@ export const CONTROL_PLANE_CHOICES: ControlPlaneChoice[] = [
     note: "think on a local model through Ollama, no payments at all",
   },
 ];
+
+/** The choice setup offers first, and takes when the operator just presses Enter. */
+export const DEFAULT_CONTROL_PLANE_KEY = CONTROL_PLANE_CHOICES[0].key;
+
+/** The choice behind what the operator typed at the prompt; empty input means the default. */
+export function resolveControlPlaneChoice(input: string): ControlPlaneChoice | undefined {
+  const key = input.trim() || DEFAULT_CONTROL_PLANE_KEY;
+  return CONTROL_PLANE_CHOICES.find((c) => c.key === key);
+}
 
 /** Model names an Ollama server offers, or an empty list when it cannot be reached. */
 export async function listOllamaModels(baseUrl: string): Promise<string[]> {
