@@ -11,6 +11,7 @@
  * The line goes to the human's log only: it is never part of the model's prompt, no tool exposes
  * it, and nothing is requested from the server just to write it.
  */
+import { getSurvivalTier } from "../conway/credits.js";
 /** The only control plane the line is written for. */
 export const CARD_HOST = "https://automatonhost.com";
 /** A 402 writes the line at most once per this interval, so it does not become one of a thousand error lines. */
@@ -98,9 +99,34 @@ export function processCardLine(options) {
     shared ??= new CardLineNotifier(options);
     return shared;
 }
-/** The line for `automaton --status`, from the stored state; null when there is nothing to say. */
-export function statusCardLine(config, state) {
-    if (!isCardHost(config.conwayApiUrl) || !isCardTier(state) || !config.walletAddress)
+/**
+ * The tier of the balance the agent loop cached under `last_known_balance` (JSON with creditsCents),
+ * or null when there is no readable cached balance.
+ */
+export function tierOfLastKnownBalance(lastKnownBalance) {
+    if (!lastKnownBalance)
+        return null;
+    try {
+        const parsed = JSON.parse(lastKnownBalance);
+        const cents = parsed?.creditsCents;
+        if (typeof cents !== "number" || !Number.isFinite(cents))
+            return null;
+        return getSurvivalTier(cents);
+    }
+    catch {
+        return null;
+    }
+}
+/**
+ * The line for `automaton --status`, from the stored state; null when there is nothing to say.
+ * Without credits the loop sleeps after a run of failed turns, so the stored state is mostly
+ * "sleeping" exactly when the human looks. While sleeping, the cached `last_known_balance` decides.
+ */
+export function statusCardLine(config, state, lastKnownBalance) {
+    if (!isCardHost(config.conwayApiUrl) || !config.walletAddress)
+        return null;
+    const tier = state === "sleeping" ? tierOfLastKnownBalance(lastKnownBalance) : state;
+    if (!tier || !isCardTier(tier))
         return null;
     return cardLine(ownCardUrl(config.walletAddress));
 }

@@ -13,6 +13,7 @@
  */
 
 import type { AgentState, SurvivalTier } from "../types.js";
+import { getSurvivalTier } from "../conway/credits.js";
 
 /** The only control plane the line is written for. */
 export const CARD_HOST = "https://automatonhost.com";
@@ -115,11 +116,34 @@ export function processCardLine(options: CardLineOptions): CardLineNotifier {
   return shared;
 }
 
-/** The line for `automaton --status`, from the stored state; null when there is nothing to say. */
+/**
+ * The tier of the balance the agent loop cached under `last_known_balance` (JSON with creditsCents),
+ * or null when there is no readable cached balance.
+ */
+export function tierOfLastKnownBalance(lastKnownBalance: string | undefined | null): SurvivalTier | null {
+  if (!lastKnownBalance) return null;
+  try {
+    const parsed = JSON.parse(lastKnownBalance) as { creditsCents?: unknown };
+    const cents = parsed?.creditsCents;
+    if (typeof cents !== "number" || !Number.isFinite(cents)) return null;
+    return getSurvivalTier(cents);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The line for `automaton --status`, from the stored state; null when there is nothing to say.
+ * Without credits the loop sleeps after a run of failed turns, so the stored state is mostly
+ * "sleeping" exactly when the human looks. While sleeping, the cached `last_known_balance` decides.
+ */
 export function statusCardLine(
   config: { conwayApiUrl?: string; walletAddress?: string },
   state: AgentState | string,
+  lastKnownBalance?: string | null,
 ): string | null {
-  if (!isCardHost(config.conwayApiUrl) || !isCardTier(state) || !config.walletAddress) return null;
+  if (!isCardHost(config.conwayApiUrl) || !config.walletAddress) return null;
+  const tier = state === "sleeping" ? tierOfLastKnownBalance(lastKnownBalance) : state;
+  if (!tier || !isCardTier(tier)) return null;
   return cardLine(ownCardUrl(config.walletAddress));
 }

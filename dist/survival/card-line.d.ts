@@ -52,9 +52,18 @@ export declare class CardLineNotifier {
 }
 /** One notifier per process, so the start line and the hourly limit survive the loop's sleeps. */
 export declare function processCardLine(options: CardLineOptions): CardLineNotifier;
-/** The line for `automaton --status`, from the stored state; null when there is nothing to say. */
+/**
+ * The tier of the balance the agent loop cached under `last_known_balance` (JSON with creditsCents),
+ * or null when there is no readable cached balance.
+ */
+export declare function tierOfLastKnownBalance(lastKnownBalance: string | undefined | null): SurvivalTier | null;
+/**
+ * The line for `automaton --status`, from the stored state; null when there is nothing to say.
+ * Without credits the loop sleeps after a run of failed turns, so the stored state is mostly
+ * "sleeping" exactly when the human looks. While sleeping, the cached `last_known_balance` decides.
+ */
 export declare function statusCardLine(config: {
     conwayApiUrl?: string;
     walletAddress?: string;
-}, state: AgentState | string): string | null;
+}, state: AgentState | string, lastKnownBalance?: string | null): string | null;
 //# sourceMappingURL=card-line.d.ts.map

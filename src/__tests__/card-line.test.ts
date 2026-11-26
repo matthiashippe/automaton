@@ -137,6 +137,30 @@ describe("card line", () => {
     expect(statusCardLine(config, "sleeping")).toBeNull();
   });
 
+  it("--status while sleeping shows it when the last known balance is critical, not when it is healthy", () => {
+    const config = { conwayApiUrl: HOST, walletAddress: WALLET };
+    // The agent loop caches every successful balance read under last_known_balance in this form.
+    const balance = (creditsCents: number) => JSON.stringify({ creditsCents, usdcBalance: 0 });
+    const db = createTestDb();
+    try {
+      db.setKV("last_known_balance", balance(0));
+      expect(statusCardLine(config, "sleeping", db.getKV("last_known_balance"))).toBe(SENTENCE + OWN_LINK);
+    } finally {
+      db.close();
+    }
+    expect(statusCardLine(config, "sleeping", balance(10))).toBe(SENTENCE + OWN_LINK);
+    expect(statusCardLine(config, "sleeping", balance(-5))).toBe(SENTENCE + OWN_LINK);
+    expect(statusCardLine(config, "sleeping", balance(11))).toBeNull();
+    expect(statusCardLine(config, "sleeping", balance(5000))).toBeNull();
+    expect(statusCardLine(config, "sleeping", undefined)).toBeNull();
+    expect(statusCardLine(config, "sleeping", "not json")).toBeNull();
+    expect(statusCardLine(config, "sleeping", JSON.stringify({ usdcBalance: 0 }))).toBeNull();
+    // Only automatonhost.com, also while sleeping.
+    expect(statusCardLine({ conwayApiUrl: "https://api.conway.tech", walletAddress: WALLET }, "sleeping", balance(0))).toBeNull();
+    // A running automaton reports its own tier; a stale cached balance does not override it.
+    expect(statusCardLine(config, "running", balance(0))).toBeNull();
+  });
+
   it("the agent loop writes it on its own line, next to the unchanged error line, never to the model", async () => {
     const messages: string[] = [];
     StructuredLogger.setSink((entry: LogEntry) => messages.push(entry.message));
