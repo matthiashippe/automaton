@@ -30,6 +30,7 @@ import { createLogger, StructuredLogger } from "./observability/logger.js";
 import { prettySink } from "./observability/pretty-sink.js";
 import { bootstrapTopup } from "./conway/topup.js";
 import { isNoControlPlane } from "./setup/control-planes.js";
+import { statusCardLine } from "./survival/card-line.js";
 import { randomUUID } from "crypto";
 import { keccak256, toHex } from "viem";
 import { VERSION } from "./version.js";
@@ -164,6 +165,10 @@ Model:      ${config.inferenceModel}
 Version:    ${config.version}
 ========================
 `);
+    // Below the block, as plain text of its own: the logger writes JSON here, without prettySink.
+    const cardLine = statusCardLine(config, state);
+    if (cardLine)
+        process.stdout.write(cardLine + "\n");
     db.close();
 }
 // ─── Main Run ──────────────────────────────────────────────────
