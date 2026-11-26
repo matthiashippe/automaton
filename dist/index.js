@@ -166,7 +166,8 @@ Version:    ${config.version}
 ========================
 `);
     // Below the block, as plain text of its own: the logger writes JSON here, without prettySink.
-    const cardLine = statusCardLine(config, state);
+    // While sleeping, the stored state says nothing about credits: the cached last_known_balance does.
+    const cardLine = statusCardLine(config, state, db.getKV("last_known_balance"));
     if (cardLine)
         process.stdout.write(cardLine + "\n");
     db.close();
