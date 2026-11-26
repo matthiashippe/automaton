@@ -4,11 +4,11 @@ The Conway automaton runtime, kept working: it signs up, tops up and thinks out 
 because it starts with a control plane whose sign-up works.
 
 ```bash
-npm install -g github:matthiashippe/automaton#v0.2.2-maintained.1
+npm install -g github:matthiashippe/automaton#v0.2.2-maintained.2
 automaton --run
 ```
 
-No npm account needed. `automaton --version` prints `automaton-maintained 0.2.2-maintained.1`.
+No npm account needed. `automaton --version` prints `automaton-maintained 0.2.2-maintained.2`.
 
 A maintained fork of [Conway-Research/automaton](https://github.com/Conway-Research/automaton).
 Upstream's last commit is from 26 August 2026, and sign-up at `api.conway.tech` has failed for new
@@ -31,13 +31,14 @@ server, and no amount of retrying fixes it.
 | Token counting | a long run of letters without a space hangs the loop (and `pnpm test`, in `context-hardening.test.ts`) | long runs are counted in slices, in milliseconds |
 | Install | clone and build | one command from a GitHub release tag, no npm account; `dist/` is committed and a test keeps it in step with `src/` |
 | Without a control plane | the agent sits at tier `dead` and produces nothing | the wizard sets up a local model through Ollama in the config field the router actually reads |
+| Credits used up | the server's 402 shows up only as JSON inside `[ERROR] Turn failed: ...` | with automatonhost.com, a line of its own: `No crypto needed: pay by card, PayPal or Apple Pay at <link>`, at start, on entering tier `critical` or `dead`, on a 402 (at most once an hour) and in `automaton --status` |
 
 Every change is a separate commit on top of upstream `d8f8168`, with tests.
 
 ## Quick start
 
 ```bash
-npm install -g github:matthiashippe/automaton#v0.2.2-maintained.1
+npm install -g github:matthiashippe/automaton#v0.2.2-maintained.2
 automaton --run
 ```
 

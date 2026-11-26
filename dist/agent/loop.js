@@ -11,6 +11,7 @@ import { buildContextMessages, trimContext } from "./context.js";
 import { createBuiltinTools, loadInstalledTools, toolsToInferenceFormat, executeTool, } from "./tools.js";
 import { sanitizeInput } from "./injection-defense.js";
 import { getSurvivalTier } from "../conway/credits.js";
+import { processCardLine } from "../survival/card-line.js";
 import { getUsdcBalance } from "../conway/x402.js";
 import { claimInboxMessages, markInboxProcessed, markInboxFailed, resetInboxToReceived, consumeNextWakeEvent, } from "../state/database.js";
 import { ulid } from "ulid";
@@ -271,6 +272,12 @@ export async function runAgentLoop(options) {
     // Transition to waking state
     db.setAgentState("waking");
     onStateChange?.("waking");
+    // The card line for the human (src/survival/card-line.ts): log only, never the prompt.
+    const cardLine = processCardLine({
+        conwayApiUrl: config.conwayApiUrl,
+        address: identity.address,
+        log: (line) => log(config, line),
+    });
     // Get financial state
     let financial = await getFinancialState(conway, identity.address, db, config.chainType || identity.chainType || "evm");
     // Check if this is the first run
@@ -389,6 +396,8 @@ export async function runAgentLoop(options) {
                     }
                     inference.setLowComputeMode(false);
                 }
+                // Start in, or entry into, tier critical or dead: tell the human the card link.
+                cardLine.onTier(effectiveTier);
             }
             // Build context — filter out purely idle turns (only status checks)
             // to prevent the model from continuing a status-check pattern
@@ -719,6 +728,8 @@ export async function runAgentLoop(options) {
         catch (err) {
             consecutiveErrors++;
             log(config, `[ERROR] Turn failed: ${err.message}`);
+            // An INSUFFICIENT_CREDITS 402 with card_url: the link on a line of its own, at most once an hour.
+            cardLine.onInferenceError(err);
             // Handle inbox message state on turn failure:
             // Messages that have retries remaining go back to 'received';
             // messages that have exhausted retries move to 'failed'.
