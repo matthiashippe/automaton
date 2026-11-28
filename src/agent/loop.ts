@@ -38,6 +38,7 @@ import { sanitizeInput } from "./injection-defense.js";
 import { getSurvivalTier } from "../conway/credits.js";
 import { processCardLine } from "../survival/card-line.js";
 import { getUsdcBalance } from "../conway/x402.js";
+import { topupTiersFor } from "../conway/topup.js";
 import {
   claimInboxMessages,
   markInboxProcessed,
@@ -449,7 +450,9 @@ export async function runAgentLoop(
         // available, buy credits NOW — before attempting inference.
         // This prevents the agent from dying mid-loop while waiting for
         // the heartbeat to fire. Uses a 60s cooldown to avoid hammering.
-        if ((tier === "critical" || tier === "low_compute") && financial.usdcBalance >= 5) {
+        // From the smallest tier this control plane sells (1 USD on automatonhost.com).
+        const minTopupUsd = topupTiersFor(config.conwayApiUrl)[0];
+        if ((tier === "critical" || tier === "low_compute") && financial.usdcBalance >= minTopupUsd) {
           const INLINE_TOPUP_COOLDOWN_MS = 60_000;
           const lastInlineTopup = db.getKV("last_inline_topup_attempt");
           const cooldownExpired = !lastInlineTopup ||

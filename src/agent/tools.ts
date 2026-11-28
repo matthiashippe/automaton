@@ -297,12 +297,14 @@ export function createBuiltinTools(sandboxId: string): AutomatonTool[] {
           return "Credit topup via x402 requires an EVM wallet. Solana automatons should fund credits via the Conway dashboard or credits API.";
         }
 
-        const { topupCredits, TOPUP_TIERS } =
+        const { topupCredits, topupTiersFor } =
           await import("../conway/topup.js");
         const amountUsd = args.amount_usd as number;
 
-        if (!TOPUP_TIERS.includes(amountUsd)) {
-          return `Invalid tier. Valid amounts (USD): ${TOPUP_TIERS.join(", ")}`;
+        // The tiers this control plane sells: 1 USD only on automatonhost.com.
+        const tiers = topupTiersFor(ctx.config.conwayApiUrl);
+        if (!tiers.includes(amountUsd)) {
+          return `Invalid tier. Valid amounts (USD): ${tiers.join(", ")}`;
         }
 
         // Check USDC balance first (EVM-only path after Solana guard above)
