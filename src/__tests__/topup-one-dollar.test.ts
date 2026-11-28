@@ -112,6 +112,18 @@ describe("one dollar tier", () => {
         expect(x402Fetch.mock.calls[0][0]).toBe(`${apiUrl}/pay/5/${account.address}`);
       }
     }
+
+    // Also with credits left below the threshold, where 1 USD would cover the deficit: a wallet of
+    // 5 USDC or more buys exactly what it bought before the one dollar tier.
+    for (const apiUrl of [HOST, CONWAY]) {
+      for (const creditsCents of [400, 450, 499]) {
+        x402Fetch.mockClear();
+        getUsdcBalance.mockResolvedValue(7.5);
+        const result = await bootstrapTopup({ apiUrl, account, creditsCents });
+        expect(result?.amountUsd, `${apiUrl} with ${creditsCents} cents left`).toBe(5);
+        expect(x402Fetch.mock.calls[0][0]).toBe(`${apiUrl}/pay/5/${account.address}`);
+      }
+    }
   });
 
   it("buys nothing with less than 1 USDC", async () => {

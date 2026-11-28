@@ -230,11 +230,15 @@ export async function bootstrapTopup(params) {
     }
     const tiers = topupTiersFor(apiUrl);
     const minTier = tiers[0];
-    // automatonhost.com: the tier pickTopupTier() chooses for the deficit below the threshold.
-    // Any other control plane: the minimum tier, as upstream.
-    const tier = isCardHost(apiUrl)
-        ? pickTopupTier(tiers, creditThresholdCents - creditsCents, usdcBalance)
-        : usdcBalance >= minTier ? minTier : null;
+    const upstreamMin = UPSTREAM_TOPUP_TIERS[0];
+    // A wallet of 5 USDC or more buys exactly what it bought before, on every control plane: the
+    // upstream minimum tier. Below that, automatonhost.com sells the tier pickTopupTier() chooses
+    // for the deficit below the threshold; any other control plane buys nothing, as upstream.
+    const tier = usdcBalance >= upstreamMin
+        ? upstreamMin
+        : isCardHost(apiUrl)
+            ? pickTopupTier(tiers, creditThresholdCents - creditsCents, usdcBalance)
+            : null;
     if (tier === null) {
         logger.info(`Bootstrap topup skipped: USDC balance $${usdcBalance.toFixed(2)} below minimum tier ($${minTier})`);
         return null;
