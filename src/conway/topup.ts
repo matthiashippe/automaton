@@ -59,7 +59,7 @@ export function pickTopupTier(
 }
 
 /**
- * `details.topup_tiers_usd` of a 402, reduced to the tiers in TOPUP_TIERS, so a server can never
+ * `details.topup_tiers_usd` of a 402 from automatonhost.com, reduced to the tiers in TOPUP_TIERS, so a server can never
  * make the runtime buy an amount it does not know. Null when the field is not a list.
  */
 function tiersFrom402(details: { topup_tiers_usd?: unknown } | undefined): number[] | null {
@@ -193,13 +193,15 @@ export async function topupForSandbox(params: {
     const body = JSON.parse(error.responseText || "{}");
     requiredCents = body.details?.required_cents;
     currentCents = body.details?.current_balance_cents;
-    offeredTiers = tiersFrom402(body.details);
+    // Only automatonhost.com reads the tiers of the 402; any other control plane chooses as upstream.
+    offeredTiers = isCardHost(apiUrl) ? tiersFrom402(body.details) : null;
   } catch {
     // If we can't parse the body, check for INSUFFICIENT_CREDITS in message
     if (!error.message?.includes("INSUFFICIENT_CREDITS")) return null;
   }
 
-  // The tiers the 402 offers, if it names any; otherwise the tiers of this control plane.
+  // On automatonhost.com the tiers the 402 offers, if it names any; otherwise the tiers of this
+  // control plane (the upstream tiers for any other).
   const tiers = offeredTiers ?? topupTiersFor(apiUrl);
   if (tiers.length === 0) {
     logger.info("Sandbox topup skipped: the 402 offers no tier this runtime knows");
@@ -221,7 +223,7 @@ export async function topupForSandbox(params: {
   }
 
   let selectedTier: number | null;
-  if (offeredTiers || isCardHost(apiUrl)) {
+  if (isCardHost(apiUrl)) {
     // The smallest tier the wallet holds that covers the deficit, else the largest it holds.
     selectedTier = pickTopupTier(tiers, deficitCents, usdcBalance);
     if (selectedTier === null) {
