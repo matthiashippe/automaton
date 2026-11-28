@@ -1,6 +1,6 @@
 {
   "name": "automaton-maintained",
-  "version": "0.2.2-maintained.4",
+  "version": "0.2.2-maintained.5",
   "description": "Maintained fork of the Conway automaton runtime: real sign-up errors, no lost topups, a choice of control plane or a local model",
   "type": "module",
   "main": "dist/index.js",
