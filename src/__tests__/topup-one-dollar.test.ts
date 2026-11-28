@@ -177,6 +177,52 @@ describe("one dollar tier", () => {
     expect(x402Fetch).not.toHaveBeenCalled();
   });
 
+  it("keeps the upstream sandbox choice for another control plane when the 402 names tiers", async () => {
+    // A deficit no tier the wallet holds covers: upstream skips, even when the 402 lists its tiers.
+    getUsdcBalance.mockResolvedValue(30);
+    expect(
+      await topupForSandbox({
+        apiUrl: CONWAY,
+        account,
+        error: sandbox402({
+          required_cents: 10_000,
+          current_balance_cents: 0,
+          topup_tiers_usd: [5, 25, 100, 500, 1000, 2500],
+        }),
+      }),
+    ).toBeNull();
+    expect(x402Fetch).not.toHaveBeenCalled();
+
+    // The smallest upstream tier that covers the deficit, when the wallet holds it.
+    const covering = await topupForSandbox({
+      apiUrl: CONWAY,
+      account,
+      error: sandbox402({ required_cents: 900, current_balance_cents: 100, topup_tiers_usd: [5, 25, 100] }),
+    });
+    expect(covering?.amountUsd).toBe(25);
+
+    // The field never changes the choice there: no 1 USD with 1 to under 5 USDC, and 5 USD where
+    // upstream buys 5 USD, whatever the 402 lists.
+    getUsdcBalance.mockResolvedValue(4.99);
+    expect(
+      await topupForSandbox({
+        apiUrl: CONWAY,
+        account,
+        error: sandbox402({ required_cents: 150, current_balance_cents: 100, topup_tiers_usd: [1, 5] }),
+      }),
+    ).toBeNull();
+    getUsdcBalance.mockResolvedValue(30);
+    const upstreamTier = await topupForSandbox({
+      apiUrl: CONWAY,
+      account,
+      error: sandbox402({ required_cents: 150, current_balance_cents: 100, topup_tiers_usd: [25, 100] }),
+    });
+    expect(upstreamTier?.amountUsd).toBe(5);
+
+    expect(paidAmounts()).toEqual([25, 5]);
+    for (const call of x402Fetch.mock.calls) expect(String(call[0]).startsWith(`${CONWAY}/pay/`)).toBe(true);
+  });
+
   it("sandbox topup takes the known tiers from details.topup_tiers_usd of the 402", async () => {
     getUsdcBalance.mockResolvedValue(2);
 

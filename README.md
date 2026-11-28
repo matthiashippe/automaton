@@ -4,11 +4,11 @@ The Conway automaton runtime, kept working: it signs up, tops up and thinks out 
 because it starts with a control plane whose sign-up works.
 
 ```bash
-npm install -g github:matthiashippe/automaton#v0.2.2-maintained.4
+npm install -g github:matthiashippe/automaton#v0.2.2-maintained.5
 automaton --run
 ```
 
-No npm account needed. `automaton --version` prints `automaton-maintained 0.2.2-maintained.4`.
+No npm account needed. `automaton --version` prints `automaton-maintained 0.2.2-maintained.5`.
 
 A maintained fork of [Conway-Research/automaton](https://github.com/Conway-Research/automaton).
 Upstream's last commit is from 26 August 2026, and sign-up at `api.conway.tech` has failed for new
@@ -39,7 +39,7 @@ Every change is a separate commit on top of upstream `d8f8168`, with tests.
 ## Quick start
 
 ```bash
-npm install -g github:matthiashippe/automaton#v0.2.2-maintained.4
+npm install -g github:matthiashippe/automaton#v0.2.2-maintained.5
 automaton --run
 ```
 
